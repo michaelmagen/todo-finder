@@ -14,7 +14,7 @@ import (
 var markerCmd = &cobra.Command{
 	Use:   "marker <new marker>",
 	Short: "Set the marker for a todo comment",
-	Long: `"Set the marker for a todo comment in the config file.
+	Long: `Set the marker for a todo comment in the config file.
 The default marker for todo comments is 'TODO:'.
 Pass in a string that will be the marker.
 If no string is passed in, will print the current marker.`,
