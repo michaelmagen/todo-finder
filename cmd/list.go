@@ -9,7 +9,6 @@ import (
 	"os"
 )
 
-// TODO: store results of todo finder search in viper somewhere
 // listCmd represents the list command
 var listCmd = &cobra.Command{
 	Use:   "list <directory>",
@@ -38,14 +37,14 @@ Hidden files/directories are also ignored, and this can also be disable with -a.
 			dirToSearch = args[0]
 		}
 		todos, err := todoFinder.GetTodos(dirToSearch)
-		// TODO: Make the handleing of no todos or err prittier for the user
+
 		if err != nil {
 			log.Error(err)
 			return
 		}
 
 		if len(todos) == 0 {
-			fmt.Println("No Todos were found!")
+			fmt.Println("No Todos were found in ", dirToSearch)
 			return
 		}
 		// Show list of todos in terminal

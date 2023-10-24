@@ -3,6 +3,7 @@ package todoFinder
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -14,7 +15,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// TODO: Handle multi-line comments
 type Todo struct {
 	text        string
 	fileName    string
@@ -54,49 +54,51 @@ func findTodoInFile(wd, path string) ([]Todo, error) {
 	}
 	defer file.Close()
 
-	//       TODO:      Explore alternative to buffer scan that can take more characters in file.
-	// This works but is inefficient
-	// FROM HERE SHOULD BE NEW SMALLER FUNCTION THAT CAN BE CALLED WITH A DIFFERENT CAPACITIES FOR BUFFER
-	scanner := bufio.NewScanner(file)
-	//const maxCapacity = 10000000
-	//buf := make([]byte, maxCapacity)
-	//scanner.Buffer(buf, maxCapacity)
-
 	todos := make([]Todo, 0)
 	lineNumber := 1
-
-	// This string is what indicates the line is a todo
+	// Get todo comment marker from viper
 	todoMarker := viper.GetString("marker")
 
-	for scanner.Scan() {
-		// If the line is a comment, add to the todo slice
-		lineText := scanner.Text()
-		pattern := fmt.Sprintf(`^\s*(\/\/|#|--)\s*%s`, regexp.QuoteMeta(todoMarker))
-		re := regexp.MustCompile(pattern)
-		// TODO: Export this part in to a seperate function. No more than 3 indents !!!
-		if re.MatchString(lineText) {
+	reader := bufio.NewReader(file)
+	// Keep reading lines in until get an End of File error
+	for {
+		lineText, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			return nil, fmt.Errorf("error while reading file %s: %v", path, err)
+		}
+
+		if isTodoComment(lineText, todoMarker) {
+			// Remove todo marker and whitespace from todo text
 			lineText = strings.SplitN(lineText, todoMarker, 2)[1]
 			lineText = strings.TrimSpace(lineText)
 			fileName := filepath.Base(file.Name())
 			absPath := file.Name()
 			relPath, err := filepath.Rel(wd, absPath)
 			if err != nil {
-				log.Printf("Failed to get relative path for file %s: %v", absPath, err)
+				log.Printf("Failed to get the relative path for file %s: %v", absPath, err)
 				continue // Skip this line and continue with the next one
 			}
 
 			newTodo := Todo{lineText, fileName, relPath, absPath, lineNumber}
 			todos = append(todos, newTodo)
 		}
+
+		// Break from loop since reached end of file
+		if err == io.EOF {
+			break
+		}
+
 		lineNumber++
 	}
 
-	if err := scanner.Err(); err != nil {
-		// TODO: Modify this so that if it fails, we call the function again with a new buffer with larger size. Maybe make another function that passes in the open file to try to do this.
-		return nil, fmt.Errorf("error while scanning file %s: %v", path, err)
-	}
-
 	return todos, nil
+}
+
+func isTodoComment(lineText, todoMarker string) bool {
+	// Check if the line is a comment with the todo marker
+	pattern := fmt.Sprintf(`^\s*(\/\/|#|--)\s*%s`, regexp.QuoteMeta(todoMarker))
+	re := regexp.MustCompile(pattern)
+	return re.MatchString(lineText)
 }
 
 func getFilesFromDir(path string, ignoreMatchers []gitignore.GitIgnore) ([]string, error) {

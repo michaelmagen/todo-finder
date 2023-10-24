@@ -9,7 +9,6 @@ import (
 	"os"
 )
 
-// TODO: Change render function of list so long todos are not turned to elipses, but are printed for multiple lines (this may not be possible)
 func CreateTodoList(todos []Todo, dirToSearch string) {
 	// Convert Todos to items type. Need to create arrays of both types of items so can access all info for items in the model
 	todoItems := []item{}
